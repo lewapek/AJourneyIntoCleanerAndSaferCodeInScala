@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+
+    <title>A journey into safer and cleaner code in Scala</title>
+
+    <meta name="description" content="A journey into safer and cleaner code in Scala with some real-life examples">
+    <meta name="author" content="Paweł Kołodziejczyk">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/league.css" id="theme">
+    <link rel="stylesheet" href="css/custom/custom.css" id="custom">
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+
+
+
+
+
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+</head>
+
+<body>
+
+<div class="reveal">
+
+    <!-- Any section element inside of this container is displayed as a slide -->
+    <div class="slides">
+        <section>
+            <h2>A journey into safer and cleaner code in Scala</h2>
+            <h4>with some real-life examples</h4>
+            <div align="right">
+                <small><i>Paweł Kołodziejczyk</i></small>
+            </div>
+        </section>
+        <section>
+            <section>
+                <h3>Agenda</h3>
+                <ol start="1">
+                    <li>Introduction
+                        <ul>
+                            <li>From scratch to final system</li>
+                        </ul>
+                    </li>
+                    <li>Errors categories</li>
+                    <li>Config issues
+                        <ul>
+                            <li>default values</li>
+                            <li>lazy vals</li>
+                        </ul>
+                    </li>
+                </ol>
+            </section>
+            <section>
+                <h3>Agenda</h3>
+                <ol start="4">
+                    <li>Any, Unit - type safe?
+                        <ul>
+                            <li>Protobuf and json serialization</li>
+                            <li>Akka actors</li>
+                            <li><i>toString</i> vs <i>show</i></li>
+                        </ul>
+                    </li>
+                    <li>Implicit conversions</li>
+                </ol>
+            </section>
+            <section>
+                <h3>Agenda</h3>
+                <ol start="6">
+                    <li>The same type or different?
+                        <ul>
+                            <li>Type aliases</li>
+                            <li>Values classes</li>
+                            <li>Tagged types</li>
+                        </ul>
+                    </li>
+                    <li>Summary</li>
+                </ol>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Project creation path</h3>
+                <ul>
+                    <li class="fragment">Idea / business needs</li>
+                    <li class="fragment">High-level architecture
+                        <ul>
+                            <li>Domain-Driven Design if necessary</li>
+                        </ul>
+                    </li>
+                    <li class="fragment">More detailed
+                        <ul>
+                            <li>communication between components</li>
+                            <li>...</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>Project creation path</h3>
+                <ul>
+                    <li class="fragment">Single component (microservice) architecture</li>
+                    <li class="fragment roll-in">
+                        <div class="fragment highlight-blue">and implementation - Scala</div>
+                        <ul>
+                            <li class="fragment">here we are</li>
+                        </ul>
+                    </li>
+                    <li class="fragment">...</li>
+                </ul>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Error categories</h3>
+                <div class="fragments">
+                    <img style="width: 65%; height: 65%; border-radius: 5%; padding: 50px; background-color: grey"
+                         src="assets/compileTimeVsRuntime.png">
+                </div>
+            </section>
+            <section>
+                <h3>Error categories</h3>
+                <div class="fragments">
+                    <img style="width: 55%; height: 55%; border-radius: 5%; padding: 50px; background-color: grey"
+                         src="assets/compileTimeVsRuntimeExtended.png">
+                </div>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Configuration</h3>
+                <ul>
+                    <li>can't be validated at compilation time</li>
+                    <li>everything that differs between deployments</li>
+                    <li>stored in env variables according to 12factor principles</li>
+                    <li>HOCON - most popular format in Scala world
+                        <ul>
+                            <li>.conf files</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>Configuration</h3>
+                <div>Example .conf file - HOCON syntax</div>
+                <pre><code data-trim data-noescape>
+kafka {
+  url = "0.0.0.0:9092"
+  url = ${?KAFKA_URL}
+}
+
+other-section {
+  year = 1222
+  year = ${?THIS_IS_ENV_FOR_YEAR}
+
+  a = ${ENV_B}
+
+  b = "some string"
+}
+other-section.b = "another string"
+    	      </code></pre>
+            </section>
+            <section>
+                <h3>Configuration</h3>
+                <div style="text-align: left">Default values + overriding in .conf files</div>
+                <ul>
+                    <li>immutable single assignment parameters are safer and simplier</li>
+                    <li>easy to misspell variable name - with default values more difficult to catch</li>
+                </ul>
+            </section>
+            <section>
+                <h3>Configuration</h3>
+                Default values directly in Scala code
+                <pre><code class="scala">
+  val config = ConfigFactory.load()
+
+  val kafkaUrl = Try(config.getString("kafka.url"))
+    .getOrElse("0.0.0.0:9988")
+
+  val year = Try(config.getInt("other-section.year"))
+    .getOrElse("2019")
+                </code></pre>
+                can cause errors difficult to find
+            </section>
+            <section>
+                <h3>Configuration</h3>
+                let's dockerize application
+                <pre><code>
+version: '3.3'
+
+services:
+  some-app:
+    image: asdasdasd/app:1.2.3
+    restart: always
+    ports:
+      - "9000:8080"
+    environment:
+      ABC: "845"
+      KAFKA_URI: "0.0.0.0:9092"
+      QUITE_LONG_ENV_NAME: 1222
+      THIS_IS_ENV_OR_YEAR: 2016
+      THIS_ONE_IS_EVEN_LONGER_ENV_NAME: 123456
+                </code></pre>
+                Did you notice missplellings in the env names?
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Lazy vals in config</h3>
+                typesafe config library example
+                <pre><code class="scala">
+  val config = ConfigFactory.load()
+
+  lazy val kafkaUrl = config.getString("kafka.url")
+  lazy val year = config.getInt("other-section.year")
+  lazy val isFoo = config.getBoolean("foo.enabled")
+  lazy val x = ...
+                </code></pre>
+            </section>
+            <section>
+                <h3>Lazy vals in config</h3>
+                <ul>
+                    <li>can fail only on the 1st access
+                        <ul>
+                            <li>when exactly?</li>
+                        </ul>
+                    </li>
+                    <li>fail-fast strategy is better
+                        <ul>
+                            <li>moves possible failures to initialization stage</li>
+                            <li>regular vals</li>
+                            <li>maybe another library
+                                <ul>
+                                    <li>e.g. pureconfig</li>
+                                    <li>doesn't throw exception</li>
+                                    <li>returns Either[Err, ConfigStructure]</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+        </section>
+        <section>
+            <h3>Be careful with lazy vals</h3>
+            <p>when using it in performance critical places</p>
+            <ul>
+                <li>it may slow down application</li>
+                <li>underlying implementation isn't perfect</li>
+                <li>improvements in Scala3 and Dotty</li>
+            </ul>
+        </section>
+        <section>
+            <section>
+                <h3>Lazy without "lazy" keyword?</h3>
+                <ul>
+                    <li>Objects in Scala are created lazily
+                        when they are referenced
+                        <ul>
+                            <li>similar to lazy vals</li>
+                        </ul>
+                    </li>
+                    <li>if Object is local scope
+                        <ul>
+                            <li>behaves exactly as lazy val</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>Lazy without "lazy" keyword?</h3>
+                <pre><code class="scala">
+object Settings {
+  val config = ConfigFactory.load()
+
+  val kafkaUrl = config.getString("kafka.url")
+  val year = config.getInt("other-section.year")
+  val isFoo = config.getBoolean("other-section.foo.enabled")
+}
+                </code></pre>
+                all values will be evaluated if any will be accessed
+                <pre><code class="scala">
+  Settings.kafkaUrl // or just Settings
+                </code></pre>
+            </section>
+            <section>
+                <h3>Lazy without "lazy" keyword?</h3>
+                <pre><code class="scala">
+class Settings(config: Config) {
+  object kafka {
+    val url = config.getString("kafka.url")
+  }
+  object otherSection {
+    val year = config.getInt("other-section.year")
+    val isFoo = config.getBoolean("other-section.foo.enabled")
+  }
+}
+                </code></pre>
+                inner objects behaves exactly as lazy vals
+                <pre><code class="scala">
+  settings.kafka.url
+                </code></pre>
+                will not instantiate otherSection object
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                Let's assume some model
+                <pre><code class="scala">
+sealed trait Command
+case class CreateUser(id: Long,
+                      name: String,
+                      tags: Set[String]) extends Command
+case class UpdateUser(id: Long,
+                      name: String,
+                      tags: Set[String]) extends Command
+case class RemoveUser(id: Long) extends Command
+                </code></pre>
+            </section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                <ul>
+                    <li>google Protocol Buffers serialization</li>
+                    <li>protobuf DSL -> generated code (Java/Scala)</li>
+                    <li class="fragment highlight-blue">generated code (Java/Scala) -> model (Scala)
+                        <ul>
+                            <li>translator needed</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                <pre><code class="scala">
+  val userCreatedMapping: PartialFunction[AnyRef, AnyRef] = {
+    case CreateUser(id, name, tags) =>
+      generated.CreateUser.newBuilder()
+        .setUserId(id)
+        .setName(name)
+        .setTags(tags.asJava)
+        .build()
+
+    case cmd: generated.CreateUser =>
+      CreateUser(cmd.id, cmd.name, cmd.tags.asScala)
+  }
+                </code></pre>
+            </section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                <pre><code class="scala">
+  val userCreatedMapping: PartialFunction[AnyRef, AnyRef] = {
+    case s: String => "???"
+
+    case CreateUser(id, name, tags) =>
+      generated.CreateUser.newBuilder()
+        .setUserId(id)
+        .setName(name)
+        .setTags(tags.asJava)
+        .build()
+
+    case cmd: generated.CreateUser =>
+      CreateUser(cmd.id, cmd.name, cmd.tags.asScala)
+  }
+                </code></pre>
+            </section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                <pre><code class="scala">
+  val userCreatedMapping: PartialFunction[AnyRef, AnyRef] = {
+    case CreateUser(id, name, tags) =>
+      generated.CreateUser.newBuilder()
+        .setUserId(id)
+        .setName(name)
+        .setTags(tags.asJava)
+
+    case cmd: generated.CreateUser =>
+      UpdateUser(cmd.id, cmd.name, cmd.tags.asScala)
+  }
+                </code></pre>
+                Did you notice what is wrong?
+            </section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                <pre><code class="scala">
+abstract class AbstractSerializer[ScalaType &lt;: AnyRef,
+                                  ProtosType &lt;: AnyRef] {
+  def convertFromScala(scalaType: ScalaType): ProtosType
+
+  def convertFromProtos(protosType: ProtosType): ScalaType
+
+  val mapping: PartialFunction[AnyRef, AnyRef] = {
+    case scalaType: ScalaType =>
+      convertFromScala(scalaType)
+
+    case protosType: ProtosType =>
+      convertFromProtos(protosType)
+  }
+}
+                </code></pre>
+            </section>
+            <section>
+                <h3>Any, Unit? Protobuf example</h3>
+                <pre><code class="scala">
+object CreateUserSerializer extends
+    AbstractSerializer[CreateUser, generated.CreateUser] {
+  override def fromScala(cmd: CreateUser): generated.CreateUser =
+    generated.CreateUser.newBuilder()
+      .setUserId(cmd.id)
+      .setName(cmd.id.name)
+      .setTags(cmd.id.tags.asJava)
+      // .build() // will be caught by compiler
+
+  override def fromProtos(cmd: generated.CreateUser): CreateUser = {
+    // incorrect type will be caught by compiler
+    UpdateUser(cmd.id, cmd.name, cmd.tags.asScala)
+  }
+}
+                </code></pre>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Any, Unit? Akka actors "Receive"</h3>
+                <pre><code class="scala">
+  type Receive = PartialFunction[Any, Unit]
+                </code></pre>
+                <ul>
+                    <li>receive method often grows in size</li>
+                    <li>difficult to refactor legacy code</li>
+                </ul>
+            </section>
+            <section>
+                <h3>Any, Unit? Akka actors "Receive"</h3>
+                <pre><code class="scala">
+class UserActor extends Actor {
+  override def receive: Receive = {
+    case Create(...) => ...
+
+    // ...
+    // suppose a lot cases here
+
+    case AddGroup(tag) => // do stuff
+
+    case RemoveGroup(id) => // do stuff
+  }
+}
+                </code></pre>
+                Is it safe to remove last 2 cases?
+            </section>
+            <section>
+                <h3>Any, Unit? Akka actors "Receive"</h3>
+                <ul>
+                    <li>Akka Typed</li>
+                    <li>Maybe you don't need actors</li>
+                    <li>monix</li>
+                </ul>
+            </section>
+            <section>
+                <h3>Any, Unit? Akka actors "Receive"</h3>
+                <pre><code class="scala">
+  def handle: PartialFunction[Command, List[Event]] = {
+    case AddTag(tag) =>
+      // ...
+      List(...)
+
+    case RemoveTag(tag) =>
+      // ...
+      List(...)
+  }
+
+  override def receive: Receive = {
+    case cmd: Command =>
+      val events = handle(cmd)
+      // ...
+  }
+                </code></pre>
+                Part of code extracted to increase type safety
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>One for Any type - json converter</h3>
+                <ul>
+                    <li>json4s - Format needed</li>
+                    <li>customs formats per concrete type available</li>
+                    <li>DefaultFormats for Any type - reflection based</li>
+                </ul>
+            </section>
+            <section>
+                <h3>One for Any type - json converter</h3>
+                <pre><code class="scala">
+  implicit val formats: Formats = DefaultFormats
+  // ...
+  onComplete(futureResponse) {
+    case Success(response) =>
+      complete(OK -> response)
+    case Failure(throwable) =>
+      complete(InternalServerError -> throwable)
+  }
+                </code></pre>
+                response and status are implicitly serialized to json
+            </section>
+            <section>
+                <h3>One for Any type - json converter</h3>
+                <pre><code>
+java.lang.StackOverflowError: null
+        at scala.collection.generic.Growable$class.loop$1(Growable.scala:52)
+        at scala.collection.generic.Growable$class.$plus$plus$eq(Growable.scala:57)
+        at scala.collection.mutable.MapBuilder.$plus$plus$eq(MapBuilder.scala:25)
+        at scala.collection.generic.GenMapFactory.apply(GenMapFactory.scala:48)
+        at org.json4s.TypeHints$class.serialize(Formats.scala:237)
+        at org.json4s.NoTypeHints$.serialize(Formats.scala:297)
+        at org.json4s.Extraction$.internalDecomposeWithBuilder(Extraction.scala:113)
+        at org.json4s.Extraction$.addField$1(Extraction.scala:110)
+        at org.json4s.Extraction$.decomposeObject$1(Extraction.scala:140)
+        at org.json4s.Extraction$.internalDecomposeWithBuilder(Extraction.scala:228)
+        at org.json4s.Extraction$.addField$1(Extraction.scala:110)
+        at org.json4s.Extraction$.decomposeObject$1(Extraction.scala:140)
+        at org.json4s.Extraction$.internalDecomposeWithBuilder(Extraction.scala:228)
+                </code></pre>
+            </section>
+            <section>
+                <h3>One for Any type - json converter</h3>
+                workaround - String instead of Throwable
+                <pre><code class="scala">
+  implicit val formats: Formats = DefaultFormats
+  // ...
+  onComplete(futureResponse) {
+    case Success(response) =>
+      complete(OK -> response)
+    case Failure(throwable) =>
+      complete(InternalServerError -> throwable.getMessage)
+  }
+                </code></pre>
+                maybe newer versions fixed this
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>One for Any type - toString</h3>
+                <ul>
+                    <li>toString method - from Java Object</li>
+                    <li>every class contains it no matter if it is useful</li>
+                </ul>
+                <pre><code class="scala">
+  List(1, 2).toString // List(1, 2, 3)
+  Array(1, 2).toString // [I@34ce8af7
+  (new {}).toString // $$anon$1@b684286
+            </code></pre>
+            </section>
+            <section>
+                <h3>One for Any type - toString</h3>
+                <ul>
+                    <li>cats Show typeclass as an alternative
+                        <ul>
+                            <li>conversions for types you actually want</li>
+                            <li>conversions on other types - compilation error</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>One for Any type - toString</h3>
+                <pre><code class="scala">
+  case class User(id: Long, name: String)
+  case class DoNotShowMe(name: String)
+
+  implicit val userShow: Show[User] =
+    Show.show("User: " + _.name)
+
+  User(7, "Michał").show // "User: Michał"
+  DoNotShowMe("private").show // doesn't compile as expected
+                </code></pre>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Implicit conversions</h3>
+                <ul>
+                    <li>implicit defs -> you don't see def call</li>
+                    <li>implicit class -> more "explicit" code</li>
+                </ul>
+                <pre><code class="scala">
+  // implicit class
+  val timeout: FiniteDuration =
+    config.getDuration("timeout").asFiniteDuration
+
+  // implicit def
+  val timeout: FiniteDuration =
+    config.getDuration("timeout")
+                </code></pre>
+            </section>
+            <section>
+                <h3>Implicit conversions</h3>
+                <ul>
+                    <li>with implicit def you don't see def call
+                        <ul>you can with IDE support</ul>
+                    </li>
+                    <li>with implicit class you can see conversion at a first glance
+                    </li>
+                    <li>do not use too many implicit conversions
+                        <ul>
+                            <li>code can easily become less readable</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>The same type or different?</h3>
+                getting range of entities from db
+                <pre><code class="scala">
+  def find(limit: Int, offset: Int): Task[E] = {
+    ...
+    prepare(limit, offset, ...)
+  }
+
+  def find(limit: Int, offset: Int, ...): Task[E] = {
+    ...
+    prepare(limit, offset, ...)
+  }
+
+  ...
+                </code></pre>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <ul>
+                    <li>common mistake - swap parameters of the same type</li>
+                    <li>compiler can't catch such mistakes</li>
+                </ul>
+                <pre><code class="scala">
+  val limit = 5
+  val offset = 100
+
+  find(limit, offset, ...)
+  find(offset, limit, ...)
+  find(17, 8, ...)
+                </code></pre>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                Type aliases
+                <pre><code class="scala">
+  type Limit = Int
+  type Offset = Int
+  def find(limit: Limit, offset: Offset): Task[E] = ...
+
+  val limit: Limit = 5
+  val offset: Offset = 100
+  type Age = Int
+  val age: Age = 35
+
+  find(limit, offset, ...) // still compiles
+  find(offset, limit, ...) // still compiles
+  find(17, age, ...) // still compiles
+                </code></pre>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <p>Type aliases</p>
+                <ul>
+                    <li>Aliases are not type safe</li>
+                    <li>Just another names for Int</li>
+                    <li>people intuitively trust they are helpful</li>
+                </ul>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <p>Value classes</p>
+                <pre><code>
+  case class Limit(value: Int) extends AnyVal
+  case class Offset(value: Int) extends AnyVal
+  def find(limit: Limit, offset: Offset): Task[E] = ...
+
+  val limit: Limit = Limit(5)
+  val offset: Offset = Limit(100)
+
+  find(limit, offset, ...) // ok
+  find(offset, limit, ...) // doesn't compile
+  find(17, 12, ...) // doesn't compile
+               </code></pre>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <p>Value classes</p>
+                <ul>
+                    <li>Guarantee type safety</li>
+                    <li>At runtime they will be no overhead
+                        <ul>
+                            <li>they will be raw Ints</li>
+                            <li>however sometimes runtime allocation will happen</li>
+                        </ul>
+                    </li>
+                </ul>
+                <pre><code>
+  case class UserId(id: Long) extends AnyVal
+  Array[UserId] // elements of array will be fully allocated
+                </code></pre>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <p>Tagged types</p>
+                <ul>
+                    <li>Type safety</li>
+                    <li>No runtime overhead</li>
+                    <li>Implementations:
+                        <ul>
+                            <li>shapeless, scalaz, softwaremill ...</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <p>Tagged types</p>
+                <pre><code>
+  trait OffsetTag
+  type Offset = Int @@ OffsetTag
+  @inline def Offset(i: Int): Offset = i.taggedWith[OffsetTag]
+
+  trait LimitTag
+  type Limit = Int @@ LimitTag
+  @inline def Limit(i: Int): Limit = i.taggedWith[LimitTag]
+
+  val limit: Limit = Limit(5)
+  val offset: Offset = Limit(100)
+  find(limit, offset, ...) // ok
+  find(offset, limit, ...) // doesn't compile
+  find(17, 12, ...) // doesn't compile
+                </code></pre>
+                <p>softwaremill/scala-common example</p>
+            </section>
+            <section>
+                <h3>The same type or different?</h3>
+                <p>Tagged types</p>
+                <pre><code>
+  trait UserIdTag
+  type Offset = Int @@ UserIdTag
+  @inline def UserId(i: Int): UserId = i.taggedWith[UserIdTag]
+
+  val id = UserId(123)
+  Array(id)
+                </code></pre>
+                <p>can be used similar to value classes</p>
+            </section>
+        </section>
+        <section>
+            <section>
+                <h3>Summary</h3>
+                <ul>
+                    <li>it's profitable to move possible errors from runtime to compilation time</li>
+                    <li>if it's impossible, then to application initialization stage</li>
+                    <li>
+                        there is always the opposite direction, compilation time -> runtime
+                        <ul>example: <pre><code>Option(nullable).get</code></pre></ul>
+                    </li>
+                </ul>
+            </section>
+            <section>
+                <h3>Summary</h3>
+                <ul>
+                    <li>it's better to know that something is wrong
+                        <ul>
+                            <li>than to believe that it's ok when actually it isn't</li>
+                        </ul>
+                    </li>
+                    <li>simple improvements can significantly make code safer and cleaner</li>
+                </ul>
+            </section>
+        </section>
+        <section>
+            <h3>Thank you</h3>
+        </section>
+    </div>
+
+</div>
+
+<script src="lib/js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'convex', // none/fade/slide/convex/concave/zoom
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/search/search.js', async: true },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+
+
+
+</script>
+
+</body>
+</html>
